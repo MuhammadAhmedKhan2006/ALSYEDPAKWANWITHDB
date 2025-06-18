@@ -9,18 +9,14 @@ SOURCES += \
     employeesalary.cpp \
     inventory.cpp \
     ownerdashboard.cpp \
-    ownerlogin.cpp \
     salesmandashboard.cpp \
-    salesmanlogin.cpp \
     mainwindow.cpp
 
 HEADERS += \
     employeesalary.h \
     inventory.h \
     ownerdashboard.h \
-    ownerlogin.h \
     salesmandashboard.h \
-    salesmanlogin.h \
     mainwindow.h
 
 TARGET = AlSyedPakwan
