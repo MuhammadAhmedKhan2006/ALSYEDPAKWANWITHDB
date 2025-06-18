@@ -1,19 +1,16 @@
 #ifndef INVENTORY_H
 #define INVENTORY_H
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QTableWidget>
-#include <QPushButton>
-#include <QLabel>
-#include <QWidget>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QSpinBox>
-#include <QDoubleSpinBox>
-#include <QMessageBox>
-#include <QHeaderView>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QTableWidget>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QDoubleSpinBox>
+#include <QtWidgets/QPushButton>
+#include <QSqlDatabase>
+#include <QList>
 
 struct InventoryItem {
     QString itemName;
@@ -27,9 +24,9 @@ struct InventoryItem {
 class Inventory : public QMainWindow
 {
     Q_OBJECT
-
 public:
-    Inventory(QWidget *parent = nullptr);
+    explicit Inventory(QWidget *parent = nullptr);
+    ~Inventory() override;
 
 private slots:
     void addItem();
@@ -41,9 +38,15 @@ private slots:
 private:
     void setupUI();
     void setTheme();
-    void refreshTable();
-    void loadInitialData();
     QLabel* createLogo();
+    bool initializeDatabase();
+    bool saveInventoryItem(const InventoryItem& item);
+    bool updateInventoryItem(const InventoryItem& item);
+    bool deleteInventoryItem(int row);
+    QList<InventoryItem> loadInventoryItemsFromDatabase();
+    void loadInitialData();
+    void refreshTable();
+    void clearForm(); // Added declaration
 
     QWidget *centralWidget;
     QVBoxLayout *mainLayout;
@@ -52,26 +55,22 @@ private:
     QVBoxLayout *leftFormLayout;
     QVBoxLayout *rightFormLayout;
     QHBoxLayout *buttonLayout;
-
     QLabel *logoLabel;
     QLabel *titleLabel;
     QTableWidget *inventoryTable;
-
-    // Form elements
     QLineEdit *itemNameEdit;
     QLineEdit *supplierNameEdit;
     QDoubleSpinBox *quantitySpinBox;
     QDoubleSpinBox *totalAmountSpinBox;
     QDoubleSpinBox *paymentSpinBox;
     QDoubleSpinBox *stockSpinBox;
-
     QPushButton *addItemButton;
     QPushButton *addPaymentButton;
     QPushButton *addStockButton;
     QPushButton *backButton;
-
     QList<InventoryItem> inventoryItems;
     int selectedRow;
+    QSqlDatabase db;
 };
 
 #endif // INVENTORY_H

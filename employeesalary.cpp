@@ -1,12 +1,32 @@
 #include "employeesalary.h"
-#include "ownerdashboard.h"
+#include "mainwindow.h"
+#include <QtWidgets/QHeaderView>
+#include "ownerdashboard.h" // Added
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
+#include <QFont>
+#include <QtGlobal>
+#include <QMessageBox>
 
 EmployeeSalary::EmployeeSalary(QWidget *parent)
     : QMainWindow(parent), selectedRow(-1)
 {
+    if (!initializeDatabase()) {
+        qDebug() << "Database initialization failed!";
+        QMessageBox::critical(this, "Error", "Failed to initialize database!");
+        return;
+    }
     setupUI();
     setTheme();
     loadInitialData();
+}
+
+EmployeeSalary::~EmployeeSalary()
+{
+    db.close();
+    QSqlDatabase::removeDatabase(db.connectionName());
 }
 
 void EmployeeSalary::setupUI()
@@ -21,125 +41,84 @@ void EmployeeSalary::setupUI()
     rightFormLayout = new QVBoxLayout();
     buttonLayout = new QHBoxLayout();
 
-    // Logo
     logoLabel = createLogo();
     logoLayout->addWidget(logoLabel);
     logoLayout->addStretch();
 
-    // Title
     titleLabel = new QLabel("EMPLOYEE SALARY MANAGEMENT", this);
     titleLabel->setAlignment(Qt::AlignCenter);
-    QFont titleFont("Arial", 18, QFont::Bold);
+    QFont titleFont("Arial", 20, QFont::Bold);
     titleLabel->setFont(titleFont);
 
-    // Table
     employeeTable = new QTableWidget(0, 5, this);
-    QStringList headers = {"Name", "Position", "Monthly Salary", "Advance Given", "Remaining Salary"};
+    QStringList headers = {"Name", "Position", "Monthly Salary", "Advance", "Remaining Salary"};
     employeeTable->setHorizontalHeaderLabels(headers);
     employeeTable->horizontalHeader()->setStretchLastSection(true);
+    employeeTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     employeeTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     employeeTable->setMinimumHeight(300);
 
-    // Form elements - Left side
     nameEdit = new QLineEdit(this);
-    leftFormLayout->addWidget(new QLabel("Employee Name:", this));
-    leftFormLayout->addWidget(nameEdit);
-
     positionEdit = new QLineEdit(this);
-    leftFormLayout->addWidget(new QLabel("Position:", this));
-    leftFormLayout->addWidget(positionEdit);
-
-    // Form elements - Right side
     salarySpinBox = new QDoubleSpinBox(this);
-    salarySpinBox->setMaximum(999999.99);
-    salarySpinBox->setPrefix("Rs. ");
-    rightFormLayout->addWidget(new QLabel("Monthly Salary:", this));
-    rightFormLayout->addWidget(salarySpinBox);
-
     advanceSpinBox = new QDoubleSpinBox(this);
-    advanceSpinBox->setMaximum(999999.99);
-    advanceSpinBox->setPrefix("Rs. ");
-    rightFormLayout->addWidget(new QLabel("Advance Amount:", this));
-    rightFormLayout->addWidget(advanceSpinBox);
 
-    formLayout->addLayout(leftFormLayout);
-    formLayout->addLayout(rightFormLayout);
+    nameEdit->setPlaceholderText("Employee Name");
+    positionEdit->setPlaceholderText("Position");
+    salarySpinBox->setRange(0.0, 1000000.0);
+    advanceSpinBox->setRange(0.0, 1000000.0);
 
-    // Buttons
     addEmployeeButton = new QPushButton("ADD EMPLOYEE", this);
     giveAdvanceButton = new QPushButton("GIVE ADVANCE", this);
-    resetSalaryButton = new QPushButton("RESET MONTHLY", this);
+    resetSalaryButton = new QPushButton("RESET SALARY", this);
     backButton = new QPushButton("BACK", this);
 
-    addEmployeeButton->setMinimumHeight(40);
-    giveAdvanceButton->setMinimumHeight(40);
-    resetSalaryButton->setMinimumHeight(40);
-    backButton->setMinimumHeight(40);
+    leftFormLayout->addWidget(new QLabel("Name:"));
+    leftFormLayout->addWidget(nameEdit);
+    leftFormLayout->addWidget(new QLabel("Position:"));
+    leftFormLayout->addWidget(positionEdit);
+    leftFormLayout->addWidget(new QLabel("Monthly Salary:"));
+    leftFormLayout->addWidget(salarySpinBox);
+
+    rightFormLayout->addWidget(new QLabel("Advance Amount:"));
+    rightFormLayout->addWidget(advanceSpinBox);
+    rightFormLayout->addStretch();
 
     buttonLayout->addWidget(addEmployeeButton);
     buttonLayout->addWidget(giveAdvanceButton);
     buttonLayout->addWidget(resetSalaryButton);
-    buttonLayout->addStretch();
     buttonLayout->addWidget(backButton);
 
-    // Main layout
+    formLayout->addLayout(leftFormLayout);
+    formLayout->addLayout(rightFormLayout);
+
     mainLayout->addLayout(logoLayout);
     mainLayout->addWidget(titleLabel);
     mainLayout->addWidget(employeeTable);
     mainLayout->addLayout(formLayout);
     mainLayout->addLayout(buttonLayout);
 
-    // Connect signals
     connect(addEmployeeButton, &QPushButton::clicked, this, &EmployeeSalary::addEmployee);
     connect(giveAdvanceButton, &QPushButton::clicked, this, &EmployeeSalary::giveAdvance);
     connect(resetSalaryButton, &QPushButton::clicked, this, &EmployeeSalary::resetSalary);
     connect(backButton, &QPushButton::clicked, this, &EmployeeSalary::goBack);
     connect(employeeTable, &QTableWidget::itemSelectionChanged, this, &EmployeeSalary::onEmployeeSelectionChanged);
 
-    setWindowTitle("Employee Salary Management - Alsyed Pakwan");
-    resize(1000, 700);
+    setWindowTitle("Employee Salary - Alsyed Pakwan");
+    resize(800, 600);
 }
 
 void EmployeeSalary::setTheme()
 {
     setStyleSheet(
         "QMainWindow { background-color: #1a1a1a; }"
-        "QLabel { color: white; font-weight: bold; }"
-        "QLineEdit, QDoubleSpinBox {"
-        "    background-color: #2d2d2d;"
-        "    border: 2px solid #4CAF50;"
-        "    border-radius: 5px;"
-        "    color: white;"
-        "    padding: 5px;"
-        "    min-height: 25px;"
-        "}"
-        "QTableWidget {"
-        "    background-color: #2d2d2d;"
-        "    color: white;"
-        "    gridline-color: #4CAF50;"
-        "    selection-background-color: #4CAF50;"
-        "}"
-        "QHeaderView::section {"
-        "    background-color: #4CAF50;"
-        "    color: white;"
-        "    font-weight: bold;"
-        "    padding: 8px;"
-        "    border: 1px solid #45a049;"
-        "}"
-        "QPushButton {"
-        "    background-color: #4CAF50;"
-        "    border: 2px solid #45a049;"
-        "    border-radius: 8px;"
-        "    color: white;"
-        "    font-weight: bold;"
-        "    padding: 8px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #45a049;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #3d8b40;"
-        "}"
+        "QLabel { color: white; }"
+        "QLineEdit { background-color: #2d2d2d; border: 2px solid #4CAF50; border-radius: 5px; color: white; padding: 5px; }"
+        "QDoubleSpinBox { background-color: #2d2d2d; border: 2px solid #4CAF50; border-radius: 5px; color: white; padding: 5px; }"
+        "QPushButton { background-color: #4CAF50; border: 2px solid #45a049; border-radius: 8px; color: white; font-weight: bold; padding: 8px; }"
+        "QPushButton:hover { background-color: #45a049; }"
+        "QPushButton:pressed { background-color: #3d8b40; }"
+        "QTableWidget { background-color: #2d2d2d; color: white; border: 2px solid #4CAF50; }"
         );
 }
 
@@ -147,124 +126,220 @@ QLabel* EmployeeSalary::createLogo()
 {
     QLabel* logo = new QLabel(this);
     logo->setFixedSize(60, 60);
-    logo->setStyleSheet(
-        "QLabel {"
-        "    background-color: #4CAF50;"
-        "    border: 3px solid white;"
-        "    border-radius: 30px;"
-        "    color: white;"
-        "    font-weight: bold;"
-        "    font-size: 14px;"
-        "}"
-        );
+    logo->setStyleSheet("QLabel { background-color: #4CAF50; border: 3px solid white; border-radius: 30px; color: white; font-weight: bold; font-size: 14px; }");
     logo->setText("AP");
     logo->setAlignment(Qt::AlignCenter);
     return logo;
 }
 
+bool EmployeeSalary::initializeDatabase()
+{
+    static int connectionCount = 0;
+    QString connectionName = QString("employee_salary_%1").arg(connectionCount++);
+    db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+    db.setDatabaseName("alsyed_pakwan.db");
+    if (!db.open()) {
+        qDebug() << "Database error:" << db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(db);
+    if (!query.exec("CREATE TABLE IF NOT EXISTS employees ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "name TEXT NOT NULL, "
+                    "position TEXT, "
+                    "monthly_salary REAL, "
+                    "advance_amount REAL, "
+                    "remaining_salary REAL)")) {
+        qDebug() << "Create table error:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool EmployeeSalary::saveEmployee(const Employee& employee)
+{
+    db.transaction();
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO employees (name, position, monthly_salary, advance_amount, remaining_salary) "
+                  "VALUES (:name, :position, :monthly_salary, :advance_amount, :remaining_salary)");
+    query.bindValue(":name", employee.name);
+    query.bindValue(":position", employee.position);
+    query.bindValue(":monthly_salary", employee.monthlySalary);
+    query.bindValue(":advance_amount", employee.advanceAmount);
+    query.bindValue(":remaining_salary", employee.remainingSalary);
+    bool success = query.exec();
+    db.commit();
+    return success;
+}
+
+bool EmployeeSalary::updateEmployee(const Employee& employee)
+{
+    if (selectedRow < 0) return false;
+    db.transaction();
+    QSqlQuery query(db);
+    query.prepare("UPDATE employees SET name = :name, position = :position, "
+                  "monthly_salary = :monthly_salary, advance_amount = :advance_amount, "
+                  "remaining_salary = :remaining_salary WHERE id = (SELECT id FROM employees LIMIT 1 OFFSET :offset)");
+    query.bindValue(":name", employee.name);
+    query.bindValue(":position", employee.position);
+    query.bindValue(":monthly_salary", employee.monthlySalary);
+    query.bindValue(":advance_amount", employee.advanceAmount);
+    query.bindValue(":remaining_salary", employee.remainingSalary);
+    query.bindValue(":offset", selectedRow);
+    bool success = query.exec();
+    db.commit();
+    return success;
+}
+
+bool EmployeeSalary::deleteEmployee(int row)
+{
+    if (row < 0) return false;
+    db.transaction();
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM employees WHERE id = (SELECT id FROM employees LIMIT 1 OFFSET :offset)");
+    query.bindValue(":offset", row);
+    bool success = query.exec();
+    db.commit();
+    return success;
+}
+
+QList<Employee> EmployeeSalary::loadEmployeesFromDatabase()
+{
+    QList<Employee> employees;
+    QSqlQuery query(db);
+    if (query.exec("SELECT name, position, monthly_salary, advance_amount, remaining_salary FROM employees")) {
+        while (query.next()) {
+            Employee employee;
+            employee.name = query.value(0).toString();
+            employee.position = query.value(1).toString();
+            employee.monthlySalary = query.value(2).toDouble();
+            employee.advanceAmount = query.value(3).toDouble();
+            employee.remainingSalary = query.value(4).toDouble();
+            employees.append(employee);
+        }
+    } else {
+        qDebug() << "Load employees error:" << query.lastError().text();
+    }
+    return employees;
+}
+
 void EmployeeSalary::loadInitialData()
 {
-    Employee chef = {"Ahmad Ali", "Head Chef", 50000.0, 10000.0, 40000.0};
-    Employee waiter1 = {"Muhammad Hassan", "Waiter", 25000.0, 5000.0, 20000.0};
-    Employee waiter2 = {"Ali Raza", "Waiter", 25000.0, 0.0, 25000.0};
-    Employee cleaner = {"Fatima Khan", "Cleaner", 20000.0, 3000.0, 17000.0};
-    Employee cashier = {"Sara Ahmed", "Cashier", 35000.0, 8000.0, 27000.0};
-
-    employees.append(chef);
-    employees.append(waiter1);
-    employees.append(waiter2);
-    employees.append(cleaner);
-    employees.append(cashier);
-
+    employees = loadEmployeesFromDatabase();
     refreshTable();
 }
 
 void EmployeeSalary::refreshTable()
 {
     employeeTable->setRowCount(employees.size());
-
-    for (int i = 0; i < employees.size(); ++i) {
-        const Employee& emp = employees[i];
-        employeeTable->setItem(i, 0, new QTableWidgetItem(emp.name));
-        employeeTable->setItem(i, 1, new QTableWidgetItem(emp.position));
-        employeeTable->setItem(i, 2, new QTableWidgetItem("Rs. " + QString::number(emp.monthlySalary, 'f', 2)));
-        employeeTable->setItem(i, 3, new QTableWidgetItem("Rs. " + QString::number(emp.advanceAmount, 'f', 2)));
-        employeeTable->setItem(i, 4, new QTableWidgetItem("Rs. " + QString::number(emp.remainingSalary, 'f', 2)));
+    for (int row = 0; row < employees.size(); ++row) {
+        Employee employee = employees[row];
+        employeeTable->setItem(row, 0, new QTableWidgetItem(employee.name));
+        employeeTable->setItem(row, 1, new QTableWidgetItem(employee.position));
+        employeeTable->setItem(row, 2, new QTableWidgetItem(QString::number(employee.monthlySalary, 'f', 2)));
+        employeeTable->setItem(row, 3, new QTableWidgetItem(QString::number(employee.advanceAmount, 'f', 2)));
+        employeeTable->setItem(row, 4, new QTableWidgetItem(QString::number(employee.remainingSalary, 'f', 2)));
     }
 }
 
 void EmployeeSalary::addEmployee()
 {
-    if (nameEdit->text().isEmpty() || positionEdit->text().isEmpty()) {
-        QMessageBox::warning(this, "Warning", "Please fill in employee name and position!");
+    Employee employee;
+    employee.name = nameEdit->text().trimmed();
+    employee.position = positionEdit->text().trimmed();
+    employee.monthlySalary = salarySpinBox->value();
+    employee.advanceAmount = 0.0;
+    employee.remainingSalary = employee.monthlySalary;
+
+    if (employee.name.isEmpty() || employee.position.isEmpty() || employee.monthlySalary <= 0) {
+        QMessageBox::warning(this, "Input Error", "Please fill all fields with valid values!");
         return;
     }
 
-    Employee newEmployee;
-    newEmployee.name = nameEdit->text();
-    newEmployee.position = positionEdit->text();
-    newEmployee.monthlySalary = salarySpinBox->value();
-    newEmployee.advanceAmount = 0.0;
-    newEmployee.remainingSalary = salarySpinBox->value();
-
-    employees.append(newEmployee);
-    refreshTable();
-
-    // Clear form
-    nameEdit->clear();
-    positionEdit->clear();
-    salarySpinBox->setValue(0.0);
-
-    QMessageBox::information(this, "Success", "Employee added successfully!");
+    if (saveEmployee(employee)) {
+        employees.append(employee);
+        refreshTable();
+        clearForm();
+        QMessageBox::information(this, "Success", "Employee added successfully!");
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to add employee to database!");
+    }
 }
 
 void EmployeeSalary::giveAdvance()
 {
-    if (selectedRow < 0 || selectedRow >= employees.size()) {
-        QMessageBox::warning(this, "Warning", "Please select an employee from the table!");
+    if (selectedRow < 0) {
+        QMessageBox::warning(this, "Selection Error", "Please select an employee to give advance!");
         return;
     }
 
     double advance = advanceSpinBox->value();
-    if (advance <= 0) {
-        QMessageBox::warning(this, "Warning", "Please enter a valid advance amount!");
+    if (advance <= 0 || advance > employees[selectedRow].remainingSalary) {
+        QMessageBox::warning(this, "Input Error", "Invalid advance amount!");
         return;
     }
 
-    Employee& emp = employees[selectedRow];
-    if (advance > emp.remainingSalary) {
-        QMessageBox::warning(this, "Warning", "Advance amount cannot exceed remaining salary!");
-        return;
+    Employee& employee = employees[selectedRow];
+    employee.advanceAmount += advance;
+    employee.remainingSalary -= advance;
+
+    if (updateEmployee(employee)) {
+        refreshTable();
+        clearForm();
+        QMessageBox::information(this, "Success", "Advance given successfully!");
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to update advance!");
     }
-
-    emp.advanceAmount += advance;
-    emp.remainingSalary -= advance;
-
-    refreshTable();
-    advanceSpinBox->setValue(0.0);
-
-    QMessageBox::information(this, "Success", "Advance given successfully!");
 }
 
 void EmployeeSalary::resetSalary()
 {
-    for (Employee& emp : employees) {
-        emp.advanceAmount = 0.0;
-        emp.remainingSalary = emp.monthlySalary;
+    if (selectedRow < 0) {
+        QMessageBox::warning(this, "Selection Error", "Please select an employee to reset salary!");
+        return;
     }
 
-    refreshTable();
-    QMessageBox::information(this, "Success", "All salaries reset for new month!");
+    Employee& employee = employees[selectedRow];
+    employee.advanceAmount = 0.0;
+    employee.remainingSalary = employee.monthlySalary;
+
+    if (updateEmployee(employee)) {
+        refreshTable();
+        clearForm();
+        QMessageBox::information(this, "Success", "Salary reset successfully!");
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to reset salary!");
+    }
+}
+
+void EmployeeSalary::goBack()
+{
+    OwnerDashboard *dashboard = new OwnerDashboard(this->parentWidget()); // Corrected
+    dashboard->show();
+    this->close();
 }
 
 void EmployeeSalary::onEmployeeSelectionChanged()
 {
     selectedRow = employeeTable->currentRow();
+    if (selectedRow >= 0 && selectedRow < employees.size()) {
+        Employee employee = employees[selectedRow];
+        nameEdit->setText(employee.name);
+        positionEdit->setText(employee.position);
+        salarySpinBox->setValue(employee.monthlySalary);
+        advanceSpinBox->setValue(0.0);
+    } else {
+        clearForm();
+    }
 }
 
-void EmployeeSalary::goBack()
+void EmployeeSalary::clearForm()
 {
-    OwnerDashboard *dashboard = new OwnerDashboard();
-    dashboard->show();
-    this->close();
+    nameEdit->clear();
+    positionEdit->clear();
+    salarySpinBox->setValue(0.0);
+    advanceSpinBox->setValue(0.0);
+    employeeTable->clearSelection();
+    selectedRow = -1;
 }

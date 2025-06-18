@@ -1,12 +1,29 @@
 #include "ownerlogin.h"
 #include "ownerdashboard.h"
 #include "mainwindow.h"
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
+#include <QFont>
+#include <QtGlobal>
+#include <QMessageBox>
 
 OwnerLogin::OwnerLogin(QWidget *parent)
     : QDialog(parent)
 {
+    if (!initializeDatabase()) {
+        qDebug() << "Database initialization failed!";
+        return;
+    }
     setupUI();
     setTheme();
+}
+
+OwnerLogin::~OwnerLogin()
+{
+    db.close();
+    QSqlDatabase::removeDatabase(db.connectionName());
 }
 
 void OwnerLogin::setupUI()
@@ -15,18 +32,15 @@ void OwnerLogin::setupUI()
     logoLayout = new QHBoxLayout();
     formLayout = new QVBoxLayout();
 
-    // Logo
     logoLabel = createLogo();
     logoLayout->addWidget(logoLabel);
     logoLayout->addStretch();
 
-    // Title
     titleLabel = new QLabel("OWNER LOGIN", this);
     titleLabel->setAlignment(Qt::AlignCenter);
     QFont titleFont("Arial", 20, QFont::Bold);
     titleLabel->setFont(titleFont);
 
-    // Form elements
     emailLabel = new QLabel("Email:", this);
     emailEdit = new QLineEdit(this);
     passwordLabel = new QLabel("Password:", this);
@@ -45,7 +59,6 @@ void OwnerLogin::setupUI()
     emailLabel->setFont(labelFont);
     passwordLabel->setFont(labelFont);
 
-    // Layout
     formLayout->addStretch();
     formLayout->addWidget(titleLabel);
     formLayout->addSpacing(30);
@@ -63,7 +76,6 @@ void OwnerLogin::setupUI()
     mainLayout->addLayout(logoLayout);
     mainLayout->addLayout(formLayout);
 
-    // Connect signals
     connect(loginButton, &QPushButton::clicked, this, &OwnerLogin::login);
     connect(backButton, &QPushButton::clicked, this, &OwnerLogin::goBack);
 
@@ -119,15 +131,59 @@ QLabel* OwnerLogin::createLogo()
     return logo;
 }
 
+bool OwnerLogin::initializeDatabase()
+{
+    static int connectionCount = 0;
+    QString connectionName = QString("owner_login_%1").arg(connectionCount++);
+    db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+    db.setDatabaseName("alsyed_pakwan.db");
+    if (!db.open()) {
+        qDebug() << "Database error:" << db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(db);
+    if (!query.exec("CREATE TABLE IF NOT EXISTS users ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "username TEXT NOT NULL UNIQUE, "
+                    "password TEXT NOT NULL, "
+                    "role TEXT NOT NULL)")) {
+        qDebug() << "Create table error:" << query.lastError().text();
+        return false;
+    }
+
+    query.prepare("INSERT OR IGNORE INTO users (username, password, role) VALUES (:username, :password, :role)");
+    query.bindValue(":username", "owner@alsyedpakwan.com");
+    query.bindValue(":password", "owner123");
+    query.bindValue(":role", "owner");
+    query.exec();
+    return true;
+}
+
+bool OwnerLogin::authenticateOwner(const QString& email, const QString& password)
+{
+    QSqlQuery query(db);
+    query.prepare("SELECT COUNT(*) FROM users WHERE username = :username AND password = :password AND role = 'owner'");
+    query.bindValue(":username", email);
+    query.bindValue(":password", password);
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt() > 0;
+    }
+    return false;
+}
+
 void OwnerLogin::login()
 {
-    QString email = emailEdit->text();
+    QString email = emailEdit->text().trimmed();
     QString password = passwordEdit->text();
 
-    // Simple authentication (you can enhance this)
-    if (email == "owner@alsyedpakwan.com" && password == "owner123") {
-        OwnerDashboard *dashboard = new OwnerDashboard();
-        dashboard->doOwnerDashboard();
+    if (email.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, "Input Error", "Please enter both email and password!");
+        return;
+    }
+
+    if (authenticateOwner(email, password)) {
+        OwnerDashboard *dashboard = new OwnerDashboard(this->parentWidget());
         dashboard->show();
         this->close();
     } else {
@@ -137,7 +193,7 @@ void OwnerLogin::login()
 
 void OwnerLogin::goBack()
 {
-    MainWindow *mainWindow = new MainWindow();
+    MainWindow *mainWindow = new MainWindow(this->parentWidget());
     mainWindow->show();
     this->close();
 }

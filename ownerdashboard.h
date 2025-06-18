@@ -1,20 +1,20 @@
 #ifndef OWNERDASHBOARD_H
 #define OWNERDASHBOARD_H
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QSqlDatabase>
 
 class OwnerDashboard : public QMainWindow
 {
     Q_OBJECT
-
 public:
-    void doOwnerDashboard();
-
-    OwnerDashboard(QWidget *parent = nullptr);
+    explicit OwnerDashboard(QWidget *parent = nullptr);
+    ~OwnerDashboard();
+    void doOwnerDashboard(); // Declared
 
 private slots:
     void openInventory();
@@ -26,20 +26,20 @@ private:
     void setupUI();
     void setTheme();
     QLabel* createLogo();
+    bool initializeDatabase();
 
     QWidget *centralWidget;
     QVBoxLayout *mainLayout;
     QHBoxLayout *logoLayout;
     QVBoxLayout *buttonLayout;
-
     QLabel *logoLabel;
-    QLabel *titleLabel;
+    QLabel *titleLabel; // Correct member
     QLabel *welcomeLabel;
-
     QPushButton *inventoryButton;
     QPushButton *salaryButton;
     QPushButton *salesmanButton;
     QPushButton *logoutButton;
+    QSqlDatabase db;
 };
 
 #endif // OWNERDASHBOARD_H

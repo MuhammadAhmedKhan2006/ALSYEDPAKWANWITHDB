@@ -3,15 +3,32 @@
 #include "employeesalary.h"
 #include "salesmandashboard.h"
 #include "mainwindow.h"
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
+#include <QFont>
+#include <QtGlobal>
 
 OwnerDashboard::OwnerDashboard(QWidget *parent)
     : QMainWindow(parent)
 {
+    if (!initializeDatabase()) {
+        qDebug() << "Database initialization failed!";
+        return;
+    }
     setupUI();
     setTheme();
 }
 
-void OwnerDashboard::doOwnerDashboard(){
+OwnerDashboard::~OwnerDashboard()
+{
+    db.close();
+    QSqlDatabase::removeDatabase(db.connectionName());
+}
+
+void OwnerDashboard::doOwnerDashboard()
+{
     setupUI();
     setTheme();
 }
@@ -25,13 +42,11 @@ void OwnerDashboard::setupUI()
     logoLayout = new QHBoxLayout();
     buttonLayout = new QVBoxLayout();
 
-    // Logo
     logoLabel = createLogo();
     logoLayout->addWidget(logoLabel);
     logoLayout->addStretch();
 
-    // Title and welcome
-    titleLabel = new QLabel("ALSYED PAKWAN", this);
+    titleLabel = new QLabel("ALSYED PAKWAN", this); // Use titleLabel
     titleLabel->setAlignment(Qt::AlignCenter);
     QFont titleFont("Arial", 24, QFont::Bold);
     titleLabel->setFont(titleFont);
@@ -41,7 +56,6 @@ void OwnerDashboard::setupUI()
     QFont welcomeFont("Arial", 18, QFont::Bold);
     welcomeLabel->setFont(welcomeFont);
 
-    // Buttons
     inventoryButton = new QPushButton("INVENTORY MANAGEMENT", this);
     salaryButton = new QPushButton("EMPLOYEE SALARY", this);
     salesmanButton = new QPushButton("SALESMAN DASHBOARD", this);
@@ -58,9 +72,8 @@ void OwnerDashboard::setupUI()
     salesmanButton->setFont(buttonFont);
     logoutButton->setFont(buttonFont);
 
-    // Layout
     buttonLayout->addStretch();
-    buttonLayout->addWidget(titleLabel);
+    buttonLayout->addWidget(titleLabel); // Use titleLabel
     buttonLayout->addSpacing(20);
     buttonLayout->addWidget(welcomeLabel);
     buttonLayout->addSpacing(50);
@@ -76,7 +89,6 @@ void OwnerDashboard::setupUI()
     mainLayout->addLayout(logoLayout);
     mainLayout->addLayout(buttonLayout);
 
-    // Connect signals
     connect(inventoryButton, &QPushButton::clicked, this, &OwnerDashboard::openInventory);
     connect(salaryButton, &QPushButton::clicked, this, &OwnerDashboard::openEmployeeSalary);
     connect(salesmanButton, &QPushButton::clicked, this, &OwnerDashboard::openSalesman);
@@ -126,30 +138,43 @@ QLabel* OwnerDashboard::createLogo()
     return logo;
 }
 
+bool OwnerDashboard::initializeDatabase()
+{
+    static int connectionCount = 0;
+    QString connectionName = QString("owner_dashboard_%1").arg(connectionCount++);
+    db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+    db.setDatabaseName("alsyed_pakwan.db");
+    if (!db.open()) {
+        qDebug() << "Database error:" << db.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 void OwnerDashboard::openInventory()
 {
-    Inventory *inventory = new Inventory();
+    Inventory *inventory = new Inventory(this);
     inventory->show();
     this->hide();
 }
 
 void OwnerDashboard::openEmployeeSalary()
 {
-    EmployeeSalary *employeeSalary = new EmployeeSalary();
+    EmployeeSalary *employeeSalary = new EmployeeSalary(this);
     employeeSalary->show();
     this->hide();
 }
 
 void OwnerDashboard::openSalesman()
 {
-    SalesmanDashboard *salesmanDashboard = new SalesmanDashboard();
+    SalesmanDashboard *salesmanDashboard = new SalesmanDashboard(this);
     salesmanDashboard->show();
     this->hide();
 }
 
 void OwnerDashboard::logout()
 {
-    MainWindow *mainWindow = new MainWindow();
+    MainWindow *mainWindow = new MainWindow(this->parentWidget());
     mainWindow->show();
     this->close();
 }

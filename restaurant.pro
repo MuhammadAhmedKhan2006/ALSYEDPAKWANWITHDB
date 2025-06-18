@@ -1,24 +1,27 @@
-QT += core gui widgets printsupport
-CONFIG += c++17
+QT += core gui widgets sql printsupport
 
-TARGET = AlsyedPakwanRestaurant
-TEMPLATE = app
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp \
-    ownerlogin.cpp \
-    salesmanlogin.cpp \
-    ownerdashboard.cpp \
-    inventory.cpp \
     employeesalary.cpp \
-    salesmandashboard.cpp
+    inventory.cpp \
+    ownerdashboard.cpp \
+    ownerlogin.cpp \
+    salesmandashboard.cpp \
+    salesmanlogin.cpp \
+    mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h \
-    ownerlogin.h \
-    salesmanlogin.h \
-    ownerdashboard.h \
-    inventory.h \
     employeesalary.h \
-    salesmandashboard.h
+    inventory.h \
+    ownerdashboard.h \
+    ownerlogin.h \
+    salesmandashboard.h \
+    salesmanlogin.h \
+    mainwindow.h
+
+TARGET = AlSyedPakwan
+TEMPLATE = app

@@ -1,20 +1,20 @@
 #ifndef OWNERLOGIN_H
 #define OWNERLOGIN_H
 
-#include <QDialog>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QMessageBox>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QPushButton>
+#include <QSqlDatabase>
 
 class OwnerLogin : public QDialog
 {
     Q_OBJECT
-
 public:
-    OwnerLogin(QWidget *parent = nullptr);
+    explicit OwnerLogin(QWidget *parent = nullptr);
+    ~OwnerLogin();
 
 private slots:
     void login();
@@ -24,18 +24,21 @@ private:
     void setupUI();
     void setTheme();
     QLabel* createLogo();
+    bool initializeDatabase();
+    bool authenticateOwner(const QString& email, const QString& password);
 
     QVBoxLayout *mainLayout;
     QHBoxLayout *logoLayout;
     QVBoxLayout *formLayout;
-    QLineEdit *emailEdit;
-    QLineEdit *passwordEdit;
-    QPushButton *loginButton;
-    QPushButton *backButton;
     QLabel *logoLabel;
     QLabel *titleLabel;
     QLabel *emailLabel;
+    QLineEdit *emailEdit;
     QLabel *passwordLabel;
+    QLineEdit *passwordEdit;
+    QPushButton *loginButton;
+    QPushButton *backButton;
+    QSqlDatabase db;
 };
 
 #endif // OWNERLOGIN_H

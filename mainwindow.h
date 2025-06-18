@@ -1,22 +1,19 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
-#include <QWidget>
-#include <QFont>
-#include <QPalette>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QSqlDatabase>
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 private slots:
     void openOwnerLogin();
@@ -26,15 +23,17 @@ private:
     void setupUI();
     void setTheme();
     QLabel* createLogo();
+    bool initializeDatabase();
 
     QWidget *centralWidget;
     QVBoxLayout *mainLayout;
     QHBoxLayout *logoLayout;
     QVBoxLayout *buttonLayout;
-    QPushButton *ownerButton;
-    QPushButton *salesmanButton;
     QLabel *logoLabel;
     QLabel *titleLabel;
+    QPushButton *ownerButton;
+    QPushButton *salesmanButton;
+    QSqlDatabase db;
 };
 
 #endif // MAINWINDOW_H

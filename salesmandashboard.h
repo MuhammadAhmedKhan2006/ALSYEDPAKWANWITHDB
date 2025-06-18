@@ -1,26 +1,20 @@
 #ifndef SALESMANDASHBOARD_H
 #define SALESMANDASHBOARD_H
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QGridLayout>
-#include <QPushButton>
-#include <QLabel>
-#include <QWidget>
-#include <QListWidget>
-#include <QSpinBox>
-#include <QTextEdit>
-#include <QLineEdit>
-#include <QMessageBox>
-#include <QPrinter>
-#include <QPrintDialog>
-#include <QTextDocument>
-#include <QDateTime>
-#include <QFile>
-#include <QDir>
-#include <QMenuBar>
-#include <QAction>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QSpinBox>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QTextEdit>
+#include <QtWidgets/QMenuBar>
+#include <QtWidgets/QMenu>
+#include <QSqlDatabase>
+#include <QList>
 
 struct MenuItem {
     QString name;
@@ -30,7 +24,6 @@ struct MenuItem {
 
 struct OrderItem {
     QString name;
-    double price;
     int quantity;
     double total;
 };
@@ -38,9 +31,9 @@ struct OrderItem {
 class SalesmanDashboard : public QMainWindow
 {
     Q_OBJECT
-
 public:
-    SalesmanDashboard(QWidget *parent = nullptr);
+    explicit SalesmanDashboard(QWidget *parent = nullptr);
+    ~SalesmanDashboard() override;
 
 private slots:
     void addToOrder();
@@ -48,22 +41,24 @@ private slots:
     void clearOrder();
     void generateBill();
     void printBill();
-    void logout();
-    void onMenuItemClicked();
-    void onOrderItemClicked();
-    void updateReceivedAmount();
     void generateDailySummary();
+    void logout();
+    void onOrderItemClicked(QListWidgetItem *item);
+    void updateReceivedAmount(const QString &text);
     void showAboutDialog();
+    void addMenuItem();
+    void editMenuItem();
 
 private:
     void setupUI();
     void setTheme();
-    void loadMenuItems();
-    void updateOrderTotal();
-    void createBillText();
     QLabel* createLogo();
-    void saveBillToDailyLog();
-    void createDailySummaryText(QString &summaryText);
+    bool initializeDatabase();
+    bool saveOrderToDatabase(const QList<OrderItem>& order);
+    bool saveDailySummary();
+    void loadMenuItems();
+    void updateBillPreview();
+    QString generateSummaryText();
 
     QWidget *centralWidget;
     QVBoxLayout *mainLayout;
@@ -74,48 +69,50 @@ private:
     QHBoxLayout *buttonLayout;
     QHBoxLayout *orderButtonLayout;
     QHBoxLayout *paymentLayout;
-
+    QHBoxLayout *menuInputLayout;
+    QHBoxLayout *menuEditLayout;
+    QMenuBar *menuBar;
+    QMenu *helpMenu;
+    QAction *aboutAction;
     QLabel *logoLabel;
     QLabel *titleLabel;
     QLabel *menuLabel;
     QLabel *orderLabel;
-    QLabel *totalLabel;
+    QLabel *customerLabel;
     QLabel *receivedLabel;
     QLabel *changeLabel;
-    QLabel *customerLabel;
     QLabel *developerLabel;
-
-    QGridLayout *menuGrid;
-    QWidget *menuWidget;
-    QListWidget *orderList;
-    QSpinBox *quantitySpinBox;
-    QLineEdit *receivedAmountEdit;
-    QLineEdit *customerNameEdit;
-    QTextEdit *billPreview;
-
+    QLabel *totalLabel;
+    QPushButton *logoutButton;
     QPushButton *addButton;
     QPushButton *removeButton;
     QPushButton *clearButton;
     QPushButton *generateBillButton;
     QPushButton *printButton;
     QPushButton *dailySummaryButton;
-    QPushButton *logoutButton;
-
-    QMenuBar *menuBar;
-    QAction *aboutAction;
-
+    QPushButton *addMenuItemButton;
+    QPushButton *editMenuItemButton;
+    QSpinBox *quantitySpinBox;
+    QLineEdit *customerNameEdit;
+    QLineEdit *receivedAmountEdit;
+    QLineEdit *menuItemNameEdit;
+    QLineEdit *menuItemPriceEdit;
+    QLineEdit *menuItemEditNameEdit;
+    QLineEdit *menuItemEditPriceEdit;
+    QListWidget *orderList;
+    QTextEdit *billPreview;
+    QWidget *menuWidget;
+    QGridLayout *menuGrid;
+    QSqlDatabase db;
     QList<MenuItem> menuItems;
     QList<OrderItem> currentOrder;
     double orderTotal;
     double receivedAmount;
     double changeAmount;
-    int selectedMenuItem;
-    QString lastBillText;
     QString customerName;
-
-    QString developerName = "MAK Software Developments";
-    QString developerContact = "03331232042";
-    QString developerFacebook = "facebook.com/makSoftwareDevelopments";
+    int selectedMenuItem;
+    int selectedMenuItemForEdit;
+    const QString developerName = "Your Name";
 };
 
 #endif // SALESMANDASHBOARD_H
